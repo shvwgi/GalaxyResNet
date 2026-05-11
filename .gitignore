@@ -32,13 +32,11 @@ wheels/
 *.pt
 *.ckpt
 
-# Keep best model checkpoint
-!models/best_model.pth
+# Ignore model artifacts
+models/
 
-# Data
-data/images_gz2/
-data/*.tar.gz
-data/*.parquet
+# Ignore dataset artifacts
+data/
 
 # Plots (optional - uncomment to ignore)
 # plots/*.png
