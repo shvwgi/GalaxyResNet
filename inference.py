@@ -1,73 +1,45 @@
 """
 Galaxy Zoo 2 Classification - Inference Script
 
-Load trained model and make predictions on new galaxy images.
+Load trained GalaxyResNet model and make predictions on galaxy images.
 """
 
 import torch
 import torch.nn as nn
-from torchvision import transforms
+from torchvision import models, transforms
 from PIL import Image
 import matplotlib.pyplot as plt
 import numpy as np
 
 
-class GalaxyCNN(nn.Module):
-    """Custom CNN for galaxy morphology classification"""
+class GalaxyResNet(nn.Module):
+    """ResNet18-based transfer learning model for galaxy morphology classification"""
     
     def __init__(self, num_classes=3):
-        super(GalaxyCNN, self).__init__()
-
-        self.block1 = nn.Sequential(
-            nn.Conv2d(in_channels=3, out_channels=32, kernel_size=3, padding=1),
-            nn.BatchNorm2d(32),
-            nn.ReLU(),
-            nn.MaxPool2d(kernel_size=2, stride=2)
-        )
-
-        self.block2 = nn.Sequential(
-            nn.Conv2d(32, 64, 3, padding=1),
-            nn.BatchNorm2d(64),
-            nn.ReLU(),
-            nn.MaxPool2d(2, 2)
-        )
-
-        self.block3 = nn.Sequential(
-            nn.Conv2d(64, 128, 3, padding=1),
-            nn.BatchNorm2d(128),
-            nn.ReLU(),
-            nn.MaxPool2d(2, 2)
-        )
-
-        self.block4 = nn.Sequential(
-            nn.Conv2d(128, 256, 3, padding=1),
-            nn.BatchNorm2d(256),
-            nn.ReLU(),
-            nn.MaxPool2d(2, 2)
-        )
-
-        self.flatten_size = 256 * 14 * 14
-
-        self.classifier = nn.Sequential(
-            nn.Flatten(),
-            nn.Linear(self.flatten_size, 1024),
-            nn.ReLU(),
+        super(GalaxyResNet, self).__init__()
+        
+        # Load pretrained ResNet18
+        self.backbone = models.resnet18(weights=models.ResNet18_Weights.DEFAULT)
+        
+        # Freeze early layers (layer1, layer2)
+        for name, param in self.backbone.named_parameters():
+            if 'layer1' in name or 'layer2' in name:
+                param.requires_grad = False
+        
+        # Replace final classifier
+        in_features = self.backbone.fc.in_features  # 512
+        self.backbone.fc = nn.Sequential(
             nn.Dropout(0.5),
-            nn.Linear(1024, num_classes)
+            nn.Linear(in_features, num_classes)
         )
-
+    
     def forward(self, x):
-        x = self.block1(x)
-        x = self.block2(x)
-        x = self.block3(x)
-        x = self.block4(x)
-        x = self.classifier(x)
-        return x
+        return self.backbone(x)
 
 
 def load_model(checkpoint_path='./models/best_model.pth', device='cuda'):
-    """Load trained model from checkpoint"""
-    model = GalaxyCNN(num_classes=3)
+    """Load trained GalaxyResNet model from checkpoint"""
+    model = GalaxyResNet(num_classes=3)
     
     checkpoint = torch.load(checkpoint_path, map_location=device)
     model.load_state_dict(checkpoint['model_state_dict'])
@@ -78,11 +50,12 @@ def load_model(checkpoint_path='./models/best_model.pth', device='cuda'):
 
 
 def preprocess_image(image_path):
-    """Preprocess galaxy image for model input"""
+    """Preprocess galaxy image for model input (validation transforms)"""
     transform = transforms.Compose([
         transforms.CenterCrop(300),
         transforms.Resize((224, 224)),
         transforms.ToTensor(),
+        # ImageNet normalization (used in ResNet18 pretraining)
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     ])
     
@@ -140,13 +113,13 @@ def visualize_prediction(image_path, probs):
 
 
 def main():
-    """Example usage"""
+    """Example usage of galaxy morphology classification inference"""
     # Configuration
     checkpoint_path = './models/best_model.pth'
-    image_path = 'path/to/your/galaxy_image.jpg'  # Update this
+    image_path = 'path/to/your/galaxy_image.jpg'  # Update with actual image path
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     
-    print(f"Loading model from {checkpoint_path}")
+    print(f"Loading GalaxyResNet model from {checkpoint_path}")
     print(f"Using device: {device}\n")
     
     # Load model
