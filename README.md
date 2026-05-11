@@ -107,70 +107,20 @@ The notebook will:
 4. Save best checkpoint + final model to `./models/`
 5. Generate visualizations in `./plots/`
 
-
-### Inference
-
-```python
-import torch
-from galaxy_datasets.pytorch import GZ2
-
-# Load trained model
-checkpoint = torch.load('./models/best_model.pth')
-model = GalaxyResNet(num_classes=3)
-model.load_state_dict(checkpoint['model_state_dict'])
-model.eval()
-
-# Make predictions
-with torch.no_grad():
-    images = batch['image'].to(device)
-    logits = model(images)
-    probabilities = torch.softmax(logits, dim=1)  # 3-class probabilities
-```
-
 **Example Predictions on Validation Set:**
 
 ![Sample Predictions](plots/predictions.png)
 
-**Inference Script Output:**
 
+### Inference
 Run the inference script on any galaxy image:
+
 ```bash
 python inference.py
 ```
 
 ![Inference Example](plots/inference%20screenshots.png)
 
-
-
-
-### Model Files
-
-- **best_model.pth**: Checkpoint with lowest validation loss (includes epoch, optimizer state)
-- **final_model.pth**: Final model + training/validation history
-
-
-## Project Structure
-
-```
-GZ2/
-├── GalaxyZoo2Model.ipynb     # Main training notebook
-├── inference.py              # Inference script for trained models
-├── update_viz.py             # Visualization update utilities
-├── README.md                 # This file
-├── LICENSE                   # MIT License
-├── CHANGELOG.md              # Version history
-├── requirements.txt          # Python dependencies
-├── .gitignore               # Git ignore rules
-├── data/                     # Dataset (auto-downloaded, .gitignored)
-│   └── images/              # 167,434 galaxy images
-├── models/                   # Saved checkpoints (.gitignored)
-│   ├── best_model.pth       # Best validation checkpoint
-│   └── final_model.pth      # Final model + training history
-└── plots/                    # Training visualizations
-    ├── learning_curve.png
-    ├── predictions.png
-    └── prediction_scatter.png
-```
 
 ## Hardware & Performance
 
@@ -186,16 +136,6 @@ GZ2/
 - **GPU Memory**: pin_memory=True for faster CPU→GPU transfers
 - **Early Stopping**: Prevents overfitting while maximizing validation performance
 - **Learning Rate Scheduling**: ReduceLROnPlateau adapts LR based on validation loss
-
-## Approach & Key Insights
-
-**Transfer Learning**: This implementation leverages ResNet18 pre-trained on ImageNet, which has already learned robust feature representations. We freeze the early convolutional layers (layer1, layer2) to preserve general image features and only fine-tune deeper layers (layer3, layer4) along with the classification head. This dramatically reduces:
-- Training time
-- Memory requirements
-- Data needed for good performance
-- Parameter count (51.8M → ~5.6M trainable)
-
-**Target Task**: Multi-class morphological classification of galaxies using crowd-sourced voting data. The KL Divergence loss trains the model to output probability distributions matching the normalized vote fractions rather than hard labels.
 
 ## References
 
